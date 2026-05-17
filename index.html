@@ -112,27 +112,31 @@
     function getBestEnglishVoice() {
         const voices = window.speechSynthesis.getVoices();
         
-        // 1순위 (Edge 전용): 가장 완벽한 인공지능 미국 영어 (넘사벽 1티어)
+        // 1순위 (윈도우 Edge 전용): 가장 완벽한 인공지능 미국 영어
         let voice = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
         if (voice) return voice;
 
-        // 2순위 (크롬 전용): 구글 클라우드 기반의 부드러운 미국 영어
+        // 2순위 (크롬 전용): 구글 클라우드 기반 미국 영어
         voice = voices.find(v => v.name === 'Google US English');
         if (voice) return voice;
 
-        // 3순위 (맥/아이폰/사파리): 애플 OS 내장 고품질 미국 영어 (Samantha, Alex 등)
-        voice = voices.find(v => v.name === 'Samantha' || v.name === 'Alex' || v.name === 'Aaron');
+        // [핵심 추가] 3순위 (맥북 타겟팅): 다운로드한 'Premium' 또는 'Enhanced' 고음질 음성 강제 추적
+        voice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Premium') || v.name.includes('Enhanced')));
         if (voice) return voice;
 
-        // 4순위 (윈도우 기본): 크롬도 엣지도 아닐 때, 윈도우에 깔린 기본 영어 중 그나마 나은 것
+        // 4순위 (맥북 기본): 프리미엄이 없을 경우, 태생적으로 고음질로 제작된 'Alex'나 기본 'Samantha' 탐색
+        voice = voices.find(v => v.lang === 'en-US' && (v.name === 'Alex' || v.name.includes('Samantha')));
+        if (voice) return voice;
+
+        // 5순위 (윈도우 기본): 윈도우 기본 영어 음성
         voice = voices.find(v => v.name.includes('Zira') || v.name.includes('David') || v.name.includes('Mark'));
         if (voice) return voice;
 
-        // 5순위: 위 목록이 전부 없다면, 아무 '미국 영어(en-US)'나 일단 가져오기
+        // 6순위: 위 목록이 전부 없다면 아무 '미국 영어(en-US)'
         voice = voices.find(v => v.lang === 'en-US');
         if (voice) return voice;
 
-        // 6순위 (최후의 보루): 미국 영어가 아예 없다면, 영국/호주 등 아무 '영어(en)' 발음이나 가져오기
+        // 7순위: 미국 영어가 없다면 아무 '영어(en)'
         return voices.find(v => v.lang.startsWith('en'));
     }
 
