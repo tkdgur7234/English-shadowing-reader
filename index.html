@@ -110,6 +110,19 @@
     const speedInput = document.getElementById('speedInput');
     const displayContainer = document.getElementById('displayText');
 
+    // [신규 추가] 브라우저가 인식하는 실제 목소리 명단 출력기
+    function checkMyVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        const enVoices = voices.filter(v => v.lang.startsWith('en')); // 영어 패키지만 추출
+        
+        if (enVoices.length === 0) {
+            alert("아직 목소리 목록이 로드되지 않았습니다. 3초 뒤에 다시 눌러주세요.");
+        } else {
+            const names = enVoices.map(v => `- ${v.name} (${v.lang})`).join('\n');
+            alert("현재 브라우저가 인식하는 영어 목소리 목록:\n\n" + names);
+        }
+    }
+    
     // [업그레이드] 한글/영문 이름 변형까지 모두 잡아내는 투망식 검색
     function getBestEnglishVoice() {
         const voices = window.speechSynthesis.getVoices();
