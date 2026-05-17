@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영어 리딩 메이트</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: #1a237e; font-weight: 800; margin-bottom: 20px; }
+        
+        #inputView textarea { width: 100%; height: 200px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 16px; resize: none; box-sizing: border-box; line-height: 1.6; outline: none; }
+        
+        .voice-control { margin-top: 15px; background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; }
+        .voice-control select { width: 90%; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #90caf9; }
+
+        .btn-start { display: block; width: 100%; padding: 16px; background-color: #3f51b5; color: white; border: none; border-radius: 12px; font-size: 18px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+        .btn-start:hover { background-color: #303f9f; }
+
+        #playerView { display: none; }
+        .player-controls { background: #282c34; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; color: white; }
+        .buttons { display: flex; justify-content: center; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .player-btn { background: #4a4e59; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .player-btn:hover { background: #616673; }
+        .play-pause-btn { background: #e53935; padding: 12px 30px; font-size: 18px; }
+        .stop-btn { background: transparent; border: 1px solid #777; color: #ccc; }
+        .speed-control { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; }
+        .speed-control input[type=range] { width: 150px; cursor: pointer; }
+
+        #displayText { font-size: 22px; line-height: 1.9; padding: 20px; background: #ffffff; border-radius: 12px; border: 1px solid #e0e0e0; max-height: 400px; overflow-y: auto; color: #424242; }
+        .word { cursor: pointer; border-radius: 4px; padding: 2px 0; transition: background 0.2s; }
+        .word:hover { background-color: #e3f2fd; }
+        .highlight { background-color: #ffeb3b; font-weight: bold; color: #000; box-shadow: 0 0 5px rgba(255,235,59,0.8); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>🎧 영어 리딩 메이트</h2>
+    
+    <div id="inputView">
+        <textarea id="textInput" placeholder="여기에 영어 지문을 붙여넣으세요..."></textarea>
+        
+        <div class="voice-control">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px;">🎙️ 목소리 선택 (Edge 브라우저 사용 권장)</label>
+            <select id="voiceSelect">
+                <option value="">목소리를 불러오는 중입니다...</option>
+            </select>
+        </div>
+
+        <button class="btn-start" onclick="initPlayer()">▶ 플레이어 시작</button>
+    </div>
+
+    <div id="playerView">
+        <div class="player-controls">
+            <div class="buttons">
+                <button class="player-btn" onclick="skipWords(-5)">⏪ 5단어 전</button>
+                <button class="player-btn play-pause-btn" id="playPauseBtn" onclick="togglePlayPause()">⏸ 일시정지</button>
+                <button class="player-btn" onclick="skipWords(5)">⏩ 5단어 후</button>
+                <button class="player-btn stop-btn" onclick="stopAndReturn()">■ 돌아가기</button>
+            </div>
+            <div class="speed-control">
+                <span>🐌 느리게</span>
+                <input type="range" id="rateInput" min="0.5" max="1.5" step="0.1" value="0.9" onchange="changeSpeed()">
+                <span>빠르게 🐇 (<span id="rateValue">0.9</span>배속)</span>
+            </div>
+        </div>
+        <div id="displayText"></div>
+    </div>
+</div>
+
+<script>
+    let fullText = "";
+    let wordsData = []; 
+    let currentWordIdx = 0; 
+    let utterance = null;
+    let isPlaying = false;
+    let availableVoices = []; 
+
+    const inputView = document.getElementById('inputView');
+    const playerView = document.getElementById('playerView');
+    const textInput = document.getElementById('textInput');
+    const displayText = document.getElementById('displayText');
+    const rateInput = document.getElementById('rateInput');
+    const rateValue = document.getElementById('rateValue');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const voiceSelect = document.getElementById('voiceSelect');
+
+    rateInput.addEventListener('input', () => { rateValue.innerText = rateInput.value; });
+
+    function loadVoices() {
+        availableVoices = window.speechSynthesis.getVoices();
+        if(availableVoices.length === 0) return;
+
+        voiceSelect.innerHTML = '';
+        
+        availableVoices.forEach((voice, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `${voice.name} (${voice.lang})`;
+            
+            // 엣지 브라우저의 고품질 US 영어를 최우선으로 선택되게 함
+            if (voice.lang === 'en-US' && voice.name.includes('Neural')) {
+                option.selected = true;
+            } else if (voice.lang === 'en-US' && voiceSelect.selectedIndex === -1) {
+                option.selected = true;
+            }
+            
+            voiceSelect.appendChild(option);
+        });
+    }
+
+    loadVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function initPlayer() {
+        fullText = textInput.value.trim();
+        if (!fullText) return alert("지문을 먼저 입력해주세요!");
+        
+        inputView.style.display = 'none';
+        playerView.style.display = 'block';
+        
+        const tokens = fullText.split(/([\\s]+)/);
+        let html = '';
+        let charCount = 0;
+        let wordIdx = 0;
+        wordsData = [];
+
+        tokens.forEach(token => {
+            if (/\\s+/.test(token)) {
+                html += token; 
+                charCount += token.length;
+            } else {
+                html += `<span class="word" id="word-${wordIdx}" onclick="playFromIndex(${wordIdx})">${token}</span>`;
+                wordsData.push({ idx: wordIdx, start: charCount, length: token.length });
+                wordIdx++;
+                charCount += token.length;
+            }
+        });
+        
+        displayText.innerHTML = html;
+        playFromIndex(0); 
+    }
+
+    function playFromIndex(wordIdx) {
+        window.speechSynthesis.cancel(); 
+        
+        if (wordIdx >= wordsData.length) return;
+        currentWordIdx = wordIdx;
+        
+        const startChar = wordsData[wordIdx].start;
+        const textToSpeak = fullText.substring(startChar);
+        
+        utterance = new SpeechSynthesisUtterance(textToSpeak);
+        
+        const selectedVoiceIndex = voiceSelect.value;
+        if(selectedVoiceIndex && availableVoices[selectedVoiceIndex]) {
+            utterance.voice = availableVoices[selectedVoiceIndex];
+        }
+        
+        utterance.rate = parseFloat(rateInput.value);
+
+        utterance.onboundary = function(e) {
+            if (e.name === 'word') {
+                const absChar = startChar + e.charIndex;
+                const currentWord = wordsData.find(w => absChar >= w.start && absChar < w.start + w.length);
+                
+                if (currentWord) {
+                    currentWordIdx = currentWord.idx;
+                    const oldHighlight = document.querySelector('.highlight');
+                    if (oldHighlight) oldHighlight.classList.remove('highlight');
+                    
+                    const wordSpan = document.getElementById(`word-${currentWord.idx}`);
+                    if (wordSpan) {
+                        wordSpan.classList.add('highlight');
+                        wordSpan.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                }
+            }
+        };
+
+        utterance.onend = function() {
+            isPlaying = false;
+            updatePlayBtnUI();
+        };
+
+        window.speechSynthesis.speak(utterance);
+        isPlaying = true;
+        updatePlayBtnUI();
+    }
+
+    function togglePlayPause() {
+        if (isPlaying) {
+            window.speechSynthesis.pause();
+            isPlaying = false;
+        } else {
+            window.speechSynthesis.resume();
+            isPlaying = true;
+        }
+        updatePlayBtnUI();
+    }
+
+    function skipWords(count) {
+        let newIdx = currentWordIdx + count;
+        if (newIdx < 0) newIdx = 0;
+        if (newIdx >= wordsData.length) newIdx = wordsData.length - 1;
+        playFromIndex(newIdx); 
+    }
+
+    function changeSpeed() {
+        playFromIndex(currentWordIdx);
+    }
+
+    function updatePlayBtnUI() {
+        if (isPlaying) {
+            playPauseBtn.innerText = "⏸ 일시정지";
+            playPauseBtn.style.background = "#e53935";
+        } else {
+            playPauseBtn.innerText = "▶ 재생";
+            playPauseBtn.style.background = "#4caf50";
+        }
+    }
+
+    function stopAndReturn() {
+        window.speechSynthesis.cancel();
+        playerView.style.display = 'none';
+        inputView.style.display = 'block';
+    }
+</script>
+</body>
+</html>
