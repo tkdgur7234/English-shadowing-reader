@@ -112,31 +112,48 @@
     function getBestEnglishVoice() {
         const voices = window.speechSynthesis.getVoices();
         
-        // 1순위 (윈도우 Edge 전용): 가장 완벽한 인공지능 미국 영어
-        let voice = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
-        if (voice) return voice;
+        // [1순위 - 윈도우 치트키] 윈도우 엣지의 넘사벽 AI 미국 영어 음성 (Neural)
+        let edgeNeural = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
+        if (edgeNeural) return edgeNeural;
 
-        // 2순위 (크롬 전용): 구글 클라우드 기반 미국 영어
-        voice = voices.find(v => v.name === 'Google US English');
-        if (voice) return voice;
+        // [2순위 - 맥북 커스텀 1지망] 이름에 '고품질', 'Premium', 'Enhanced'가 들어간 모든 영어 음성
+        let premiumVoice = voices.find(v => 
+            v.lang.startsWith('en') && 
+            (v.name.includes('고품질') || v.name.includes('Premium') || v.name.includes('Enhanced'))
+        );
+        if (premiumVoice) {
+            console.log("맥북 고품질 영어 음성 매칭:", premiumVoice.name);
+            return premiumVoice;
+        }
 
-        // [핵심 추가] 3순위 (맥북 타겟팅): 다운로드한 'Premium' 또는 'Enhanced' 고음질 음성 강제 추적
-        voice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Premium') || v.name.includes('Enhanced')));
-        if (voice) return voice;
+        // [3순위 - 맥북 커스텀 2지망] 맥OS/iOS의 자연스러운 'Zoe' 영어 음성
+        let zoeVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Zoe'));
+        if (zoeVoice) {
+            console.log("맥북 Zoe 영어 음성 매칭:", zoeVoice.name);
+            return zoeVoice;
+        }
 
-        // 4순위 (맥북 기본): 프리미엄이 없을 경우, 태생적으로 고음질로 제작된 'Alex'나 기본 'Samantha' 탐색
-        voice = voices.find(v => v.lang === 'en-US' && (v.name === 'Alex' || v.name.includes('Samantha')));
-        if (voice) return voice;
+        // [4순위 - 크롬 치트키] 구글 표준 미국 영어 (크롬 브라우저 기본 최상위 음성)
+        let googleUs = voices.find(v => v.name === 'Google US English');
+        if (googleUs) return googleUs;
 
-        // 5순위 (윈도우 기본): 윈도우 기본 영어 음성
-        voice = voices.find(v => v.name.includes('Zira') || v.name.includes('David') || v.name.includes('Mark'));
-        if (voice) return voice;
+        // [5순위 - 맥북 백업] 맥OS의 또 다른 자연스러운 영어 음성 'Siri'
+        let siriVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Siri'));
+        if (siriVoice) return siriVoice;
 
-        // 6순위: 위 목록이 전부 없다면 아무 '미국 영어(en-US)'
-        voice = voices.find(v => v.lang === 'en-US');
-        if (voice) return voice;
+        // [6순위 - 맥북 기본] 기본 원어민 음성인 Alex나 Samantha 탐색
+        let macDefault = voices.find(v => v.lang === 'en-US' && (v.name === 'Alex' || v.name.includes('Samantha')));
+        if (macDefault) return macDefault;
 
-        // 7순위: 미국 영어가 없다면 아무 '영어(en)'
+        // [7순위 - 윈도우 기본] 윈도우 기본 영어 음성 (Zira, David)
+        let winDefault = voices.find(v => v.name.includes('Zira') || v.name.includes('David'));
+        if (winDefault) return winDefault;
+
+        // [8순위] 아무 미국 영어 (en-US)
+        let anyUs = voices.find(v => v.lang === 'en-US');
+        if (anyUs) return anyUs;
+
+        // [9순위] 최후의 보루: 아무 영어 발음 (영국, 호주 등)
         return voices.find(v => v.lang.startsWith('en'));
     }
 
