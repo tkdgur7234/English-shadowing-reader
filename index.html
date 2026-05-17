@@ -27,26 +27,61 @@
         #playerView { display: none; }
         
         /* [핵심] 동영상 플레이어 스타일 컨트롤 바 */
-        .video-player-ui { background: var(--bg-dark); border-radius: 15px; padding: 20px; margin-bottom: 25px; color: white; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .video-player-ui { background: var(--bg-dark); border-radius: 15px; padding: 20px; margin-bottom: 25px; color: white; display: flex; flex-direction: column; align-items: center; gap: 20px; position: relative; }
         
+        /* 상단: 종료 버튼 */
+        .top-row { width: 100%; position: relative; }
+        .stop-return-btn { position: absolute; right: 0; top: 0; background: none; border: 1px solid #555; color: #999; padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+        .stop-return-btn:hover { color: white; border-color: white; }
+
+        /* 중앙: 재생 관련 메인 버튼 */
         .main-controls { display: flex; align-items: center; gap: 30px; }
         .control-btn { background: none; border: none; color: white; cursor: pointer; font-size: 24px; transition: color 0.2s, transform 0.1s; }
         .control-btn:hover { color: #bbdefb; }
         .control-btn:active { transform: scale(0.9); }
         .play-pause-btn { font-size: 50px; color: #fff; }
         
-        /* 속도 선택 카드 시스템 */
-        .speed-selector-wrapper { width: 100%; text-align: center; position: relative; }
-        .current-speed-btn { background: var(--control-bg); border: 1px solid #444; color: #ddd; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; }
+        /* [요청] 세로 카드 속도 선택 드롭다운 */
+        .speed-selector-wrapper { width: 100%; text-align: center; position: relative; margin-top: 10px;}
+        
+        .current-speed-btn { background: var(--control-bg); border: 1px solid #444; color: #ddd; padding: 10px 25px; border-radius: 25px; cursor: pointer; font-size: 15px; font-weight: bold; transition: 0.2s; }
         .current-speed-btn:hover { background: #3d404a; color: white; }
         
-        .speed-cards-container { display: none; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-top: 15px; width: 100%; }
-        .speed-card { background: var(--control-bg); padding: 12px 5px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; border: 2px solid transparent; }
+        /* 펼쳐지는 세로 카드 컨테이너 */
+        .speed-cards-dropdown { 
+            display: none; /* 평소엔 숨김 */
+            position: absolute; 
+            bottom: 60px; /* 버튼 위에 뜸 */
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: var(--control-bg); 
+            border: 1px solid #444; 
+            border-radius: 15px; 
+            padding: 10px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            z-index: 100; 
+            width: 150px; 
+            flex-direction: column; /* 세로 배치 */
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto; /* 카드 많을때 스크롤 */
+        }
+        .speed-cards-dropdown.active { display: flex; }
+
+        /* 세로 속도 카드 디자인 */
+        .speed-card { 
+            background: #1e2025; 
+            padding: 12px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-size: 15px; 
+            font-weight: bold; 
+            transition: 0.2s; 
+            border: 2px solid transparent; 
+            text-align: center;
+        }
         .speed-card:hover { background: #3d404a; border-color: var(--primary-color); }
         .speed-card.active { background: var(--primary-color); color: white; border-color: white; }
-
-        .stop-return-btn { position: absolute; right: 0; top: 0; background: none; border: 1px solid #555; color: #999; padding: 5px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; }
-        .stop-return-btn:hover { color: white; border-color: white; }
 
         /* 지문 표시 */
         #displayText { font-size: 24px; line-height: 2.0; padding: 30px; background: #fff; border-radius: 15px; border: 1px solid #e0e0e0; max-height: 450px; overflow-y: auto; color: #333; }
@@ -72,8 +107,8 @@
 
     <div id="playerView">
         <div class="video-player-ui">
-            <div style="width: 100%; position: relative;">
-                <button class="stop-return-btn" onclick="stopAndReturn()">뒤로가기</button>
+            <div class="top-row">
+                <button class="stop-return-btn" onclick="stopAndReturn()">종료 및 돌아가기</button>
             </div>
 
             <div class="main-controls">
@@ -81,8 +116,7 @@
                     <i class="fa-solid fa-backward-step"></i>
                 </button>
                 <button class="control-btn play-pause-btn" id="playPauseBtn" onclick="togglePlayPause()">
-                    <i class="fa-solid fa-circle-pause"></i>
-                </button>
+                    <i class="fa-solid fa-circle-play"></i> </button>
                 <button class="control-btn" title="5단어 앞으로" onclick="skipWords(5)">
                     <i class="fa-solid fa-forward-step"></i>
                 </button>
@@ -93,13 +127,16 @@
                     속도: <span id="currentSpeedText">0.9x</span> <i class="fa-solid fa-chevron-down"></i>
                 </button>
                 
-                <div class="speed-cards-container" id="speedCards">
-                    <div class="speed-card" onclick="setSpeed(0.7)">0.7x</div>
-                    <div class="speed-card" onclick="setSpeed(0.8)">0.8x</div>
+                <div class="speed-cards-dropdown" id="speedDropdown">
+                    <div class="speed-card" onclick="setSpeed(0.5)">0.5x</div>
+                    <div class="speed-card" onclick="setSpeed(0.75)">0.75x</div>
                     <div class="speed-card active" onclick="setSpeed(0.9)">0.9x</div>
                     <div class="speed-card" onclick="setSpeed(1.0)">1.0x</div>
-                    <div class="speed-card" onclick="setSpeed(1.2)">1.2x</div>
+                    <div class="speed-card" onclick="setSpeed(1.1)">1.1x</div>
+                    <div class="speed-card" onclick="setSpeed(1.25)">1.25x</div>
                     <div class="speed-card" onclick="setSpeed(1.5)">1.5x</div>
+                    <div class="speed-card" onclick="setSpeed(1.75)">1.75x</div>
+                    <div class="speed-card" onclick="setSpeed(2.0)">2.0x</div>
                 </div>
             </div>
         </div>
@@ -117,7 +154,7 @@
     let playbackSpeed = 0.9;
 
     const playPauseBtn = document.getElementById('playPauseBtn');
-    const speedCards = document.getElementById('speedCards');
+    const speedDropdown = document.getElementById('speedDropdown');
     const currentSpeedText = document.getElementById('currentSpeedText');
 
     function getBestEnglishVoice() {
@@ -133,28 +170,42 @@
         speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     }
 
+    // [핵심] Mysterious한 끊어짐 현상을 막기 위한 강력 지문 클렌징
+    function cleanText(text) {
+        // 1. 온갖 종류의 특수 공백 유니코드를 일반 스페이스바(\x20)로 강제 통일
+        let cleaned = text.replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ');
+        // 2. 단어 중간에 찢어진 공백 정리 (s kill s ➡️ skills)
+        // 이 로직은 s 단어 주변의 공백을 더 정밀하게 지웁니다.
+        cleaned = cleaned.replace(/ s /g, 's'); // s 단어가 완전히 홀로 있을때만 공백 제거
+        cleaned = cleaned.replace(/s /g, 's'); // s 뒤에 공백 제거 (s kill s ➡️ skill s)
+        // 3. 줄바꿈을 공백으로 바꾸고, 2개 이상 연속된 공백을 1개로 합침
+        cleaned = cleaned.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        return cleaned;
+    }
+
     function initPlayer() {
-        fullText = document.getElementById('textInput').value.trim();
-        if (!fullText) return alert("지문을 먼저 입력해주세요!");
+        const rawText = document.getElementById('textInput').value.trim();
+        if (!rawText) return alert("지문을 먼저 입력해주세요!");
+        
+        // [수정됨] 로드할 때 지문을 강력하게 클렌징하여 끊어짐 원천 차단
+        fullText = cleanText(rawText);
         
         document.getElementById('inputView').style.display = 'none';
         document.getElementById('playerView').style.display = 'block';
         
-        const tokens = fullText.split(/([\\s]+)/);
+        // 지문을 쪼갬
+        const tokens = fullText.split(' '); // 클렌징 되었으므로 스페이스로만 찢음
         let html = '';
         let charCount = 0;
         let wordIdx = 0;
         wordsData = [];
 
         tokens.forEach(token => {
-            if (/\\s+/.test(token)) {
-                html += token; 
-                charCount += token.length;
-            } else {
-                html += `<span class="word" id="word-${wordIdx}" onclick="playFromIndex(${wordIdx})">${token}</span>`;
+            if (token) { // 빈 단어 방지
+                html += `<span class="word" id="word-${wordIdx}" onclick="playFromIndex(${wordIdx})">${token}</span> `;
                 wordsData.push({ idx: wordIdx, start: charCount, length: token.length });
                 wordIdx++;
-                charCount += token.length;
+                charCount += token.length + 1; // 단어 + 스페이스 길이
             }
         });
         
@@ -212,7 +263,12 @@
             window.speechSynthesis.pause();
             isPlaying = false;
         } else {
-            window.speechSynthesis.resume();
+            // 정지 상태였다면 다시 resume
+            if(window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+            } else {
+                playFromIndex(currentWordIdx); // 새로 시작
+            }
             isPlaying = true;
         }
         updatePlayBtnUI();
@@ -226,13 +282,12 @@
         }
     }
 
-    // 속도 메뉴 토글
+    // [요청됨] 세로 속도 메뉴 토글
     function toggleSpeedMenu() {
-        const isVisible = speedCards.style.display === 'grid';
-        speedCards.style.display = isVisible ? 'none' : 'grid';
+        speedDropdown.classList.toggle('active');
     }
 
-    // 속도 설정 함수
+    // [요청됨] 속도 카드 클릭 시 속도 설정
     function setSpeed(speed) {
         playbackSpeed = speed;
         currentSpeedText.innerText = speed + 'x';
@@ -244,8 +299,12 @@
             if(parseFloat(card.innerText) === speed) card.classList.add('active');
         });
         
-        toggleSpeedMenu(); // 메뉴 닫기
-        playFromIndex(currentWordIdx); // 변경된 속도로 즉시 반영
+        speedDropdown.classList.remove('active'); // 메뉴 닫기
+        
+        // 재생 중이라면 바뀐 속도로 즉시 반영
+        if (isPlaying || window.speechSynthesis.speaking) {
+             playFromIndex(currentWordIdx);
+        }
     }
 
     function skipWords(count) {
@@ -260,6 +319,13 @@
         document.getElementById('playerView').style.display = 'none';
         document.getElementById('inputView').style.display = 'block';
     }
+
+    // 드롭다운 외부 클릭 시 메뉴 닫기
+    window.addEventListener('click', function(e) {
+        if (!document.getElementById('speedToggleBtn').contains(e.target) && !speedDropdown.contains(e.target)) {
+            speedDropdown.classList.remove('active');
+        }
+    });
 </script>
 </body>
 </html>
