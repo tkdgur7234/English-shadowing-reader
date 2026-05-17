@@ -65,7 +65,7 @@
         .scan-btn { position: fixed; bottom: 20px; right: 20px; background-color: #607d8b; color: white; border: none; padding: 10px 18px; border-radius: 25px; font-size: 13px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; font-weight: bold; }
         .scan-btn:hover { opacity: 1; }
 
-        /* [신규] 목소리 선택 팝업(모달) 디자인 */
+        /* 목소리 선택 팝업(모달) 디자인 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 20px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 75vh; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-bottom: 15px; }
@@ -73,11 +73,10 @@
         .close-btn { font-size: 24px; cursor: pointer; color: #999; transition: color 0.2s; line-height: 1; }
         .close-btn:hover { color: #d32f2f; }
         .voice-list-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
-        /* 스크롤바 디자인 */
+        
         .voice-list-container::-webkit-scrollbar { width: 6px; }
         .voice-list-container::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 10px; }
         
-        /* 팝업 안의 개별 목소리 버튼 디자인 */
         .voice-item { padding: 12px 15px; border: 1px solid #e0e0e0; border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: #444; }
         .voice-item:hover { border-color: var(--primary-color); background: #e8eaf6; transform: translateY(-1px); }
         .voice-item.selected { background: var(--primary-color); color: white; border-color: var(--primary-color); font-weight: bold; }
@@ -155,7 +154,6 @@
     let utterance = null;
     let isPlaying = false;
     
-    // [핵심] 사용자가 직접 선택한 목소리 이름을 저장할 변수
     let userSelectedVoice = null; 
 
     const playPauseBtn = document.getElementById('playPauseBtn');
@@ -164,33 +162,38 @@
     const voiceModal = document.getElementById('voiceModal');
     const voiceListContainer = document.getElementById('voiceList');
 
-    // [신규] 팝업창 열기 및 목소리 목록 그리기
     function openVoiceModal() {
         const voices = window.speechSynthesis.getVoices();
-        const enVoices = voices.filter(v => v.lang.startsWith('en')); 
+        let enVoices = voices.filter(v => v.lang.startsWith('en')); 
         
         if (enVoices.length === 0) {
             alert("아직 목소리 목록이 로드되지 않았습니다. 잠시 후 다시 눌러주세요.");
             return;
         }
 
-        // 기존 목록 비우기
+        // [핵심 변경 1] 미국 영어(en-US)를 무조건 위로, 나머지는 아래로 정렬 (이름순 포함)
+        enVoices.sort((a, b) => {
+            const aIsUS = a.lang === 'en-US';
+            const bIsUS = b.lang === 'en-US';
+            
+            if (aIsUS && !bIsUS) return -1;
+            if (!aIsUS && bIsUS) return 1;
+            // 둘 다 미국 영어나 둘 다 아니면 이름순 정렬
+            return a.name.localeCompare(b.name);
+        });
+
         voiceListContainer.innerHTML = '';
 
-        // 버튼(div) 생성해서 넣기
         enVoices.forEach(v => {
             const item = document.createElement('div');
-            // 만약 현재 선택된 목소리라면 'selected' 클래스 추가
             item.className = 'voice-item' + (userSelectedVoice === v.name ? ' selected' : '');
             item.innerHTML = `<span>${v.name}</span> <span class="lang-tag">${v.lang}</span>`;
             
-            // 목소리 클릭 시 이벤트
             item.onclick = () => {
-                userSelectedVoice = v.name; // 유저 선택 저장
-                closeVoiceModal();
-                alert(`✅ [${v.name}] 목소리가 0순위로 강제 고정되었습니다!\n재생 버튼을 누르면 이 목소리로 읽어줍니다.`);
+                userSelectedVoice = v.name; 
+                closeVoiceModal(); // 창만 스르륵 닫힘
                 
-                // 재생 중이라면 바뀐 목소리로 즉시 다시 읽기 시작
+                // [핵심 변경 2] 경고창(alert) 제거됨, 재생 중이라면 즉시 바뀐 목소리로 덮어쓰기 적용
                 if (isPlaying || window.speechSynthesis.speaking) {
                     playFromIndex(currentWordIdx);
                 }
@@ -198,50 +201,39 @@
             voiceListContainer.appendChild(item);
         });
 
-        // 팝업 띄우기
         voiceModal.style.display = 'flex';
     }
 
-    // 팝업창 닫기
     function closeVoiceModal() {
         voiceModal.style.display = 'none';
     }
 
-    // [업그레이드] 최적의 목소리 찾는 함수
     function getBestEnglishVoice() {
         const voices = window.speechSynthesis.getVoices();
         
-        // [0순위 치트키] 사용자가 팝업에서 직접 선택한 목소리가 있다면 무조건 1빠따로 적용!
         if (userSelectedVoice) {
             let custom = voices.find(v => v.name === userSelectedVoice);
             if (custom) return custom;
         }
         
-        // 1순위: 윈도우 Edge Neural
         let edgeNeural = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
         if (edgeNeural) return edgeNeural;
 
-        // 2순위: 맥북 고품질/Premium 저격
         let macPremium = voices.find(v => v.name === 'Evan(고품질)' || v.name.includes('고품질') || v.name.includes('Premium'));
         if (macPremium) return macPremium;
 
-        // 3순위: 크롬 구글 표준
         let googleUs = voices.find(v => v.name === 'Google US English');
         if (googleUs) return googleUs;
 
-        // 4순위: 맥북 기본 백업
         let macDefault = voices.find(v => v.lang.startsWith('en') && (v.name === 'Alex' || v.name.includes('Samantha')));
         if (macDefault) return macDefault;
 
-        // 5순위: 윈도우 기본
         let winDefault = voices.find(v => v.name.includes('Zira') || v.name.includes('David'));
         if (winDefault) return winDefault;
 
-        // 6순위: 최후의 보루
         return voices.find(v => v.lang.startsWith('en'));
     }
 
-    // 모달 바깥 어두운 배경 클릭하면 닫히게 하기
     window.addEventListener('click', function(e) {
         if (e.target === voiceModal) {
             closeVoiceModal();
