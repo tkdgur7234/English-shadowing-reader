@@ -62,6 +62,7 @@
     
     <div id="inputView">
         <textarea id="textInput" placeholder="여기에 영어 지문을 붙여넣으세요..."></textarea>
+        <button class="btn-start" style="background-color: #607d8b; margin-bottom: 10px;" onclick="checkMyVoices()">🔍 목소리 목록 스캔하기</button>
         <div class="edge-notice">
             <i class="fa-brands fa-edge"></i> <b>Edge 브라우저</b>를 가장 자연스러운 목소리를 위해 반드시 사용하셔야합니다!
         </div>
@@ -109,51 +110,40 @@
     const speedInput = document.getElementById('speedInput');
     const displayContainer = document.getElementById('displayText');
 
+    // [업그레이드] 한글/영문 이름 변형까지 모두 잡아내는 투망식 검색
     function getBestEnglishVoice() {
         const voices = window.speechSynthesis.getVoices();
         
-        // [1순위 - 윈도우 치트키] 윈도우 엣지의 넘사벽 AI 미국 영어 음성 (Neural)
+        // 1순위: 윈도우 엣지 Neural (치트키)
         let edgeNeural = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
         if (edgeNeural) return edgeNeural;
 
-        // [2순위 - 맥북 커스텀 1지망] 이름에 '고품질', 'Premium', 'Enhanced'가 들어간 모든 영어 음성
+        // 2순위: 고품질/프리미엄 (한글 '에반', '고품질' 및 소문자 premium 모두 포함)
         let premiumVoice = voices.find(v => 
             v.lang.startsWith('en') && 
-            (v.name.includes('고품질') || v.name.includes('Premium') || v.name.includes('Enhanced'))
+            (v.name.includes('고품질') || v.name.toLowerCase().includes('premium') || 
+             v.name.toLowerCase().includes('enhanced') || v.name.toLowerCase().includes('evan') || v.name.includes('에반'))
         );
-        if (premiumVoice) {
-            console.log("맥북 고품질 영어 음성 매칭:", premiumVoice.name);
-            return premiumVoice;
-        }
+        if (premiumVoice) return premiumVoice;
 
-        // [3순위 - 맥북 커스텀 2지망] 맥OS/iOS의 자연스러운 'Zoe' 영어 음성
-        let zoeVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Zoe'));
-        if (zoeVoice) {
-            console.log("맥북 Zoe 영어 음성 매칭:", zoeVoice.name);
-            return zoeVoice;
-        }
+        // 3순위: Zoe (한글 '조이' 포함)
+        let zoeVoice = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('zoe') || v.name.includes('조이')));
+        if (zoeVoice) return zoeVoice;
 
-        // [4순위 - 크롬 치트키] 구글 표준 미국 영어 (크롬 브라우저 기본 최상위 음성)
+        // 4순위: 크롬 구글 표준
         let googleUs = voices.find(v => v.name === 'Google US English');
         if (googleUs) return googleUs;
 
-        // [5순위 - 맥북 백업] 맥OS의 또 다른 자연스러운 영어 음성 'Siri'
-        let siriVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Siri'));
-        if (siriVoice) return siriVoice;
-
-        // [6순위 - 맥북 기본] 기본 원어민 음성인 Alex나 Samantha 탐색
-        let macDefault = voices.find(v => v.lang === 'en-US' && (v.name === 'Alex' || v.name.includes('Samantha')));
+        // 5순위: Siri, Alex, Samantha 등 맥북 기본 백업
+        let macDefault = voices.find(v => v.lang.startsWith('en') && 
+            (v.name.includes('Siri') || v.name === 'Alex' || v.name.includes('Samantha')));
         if (macDefault) return macDefault;
 
-        // [7순위 - 윈도우 기본] 윈도우 기본 영어 음성 (Zira, David)
+        // 6순위: 윈도우 기본
         let winDefault = voices.find(v => v.name.includes('Zira') || v.name.includes('David'));
         if (winDefault) return winDefault;
 
-        // [8순위] 아무 미국 영어 (en-US)
-        let anyUs = voices.find(v => v.lang === 'en-US');
-        if (anyUs) return anyUs;
-
-        // [9순위] 최후의 보루: 아무 영어 발음 (영국, 호주 등)
+        // 7순위: 아무 영어
         return voices.find(v => v.lang.startsWith('en'));
     }
 
