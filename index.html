@@ -56,6 +56,11 @@
         .os-notice { background: #fff8e1; color: #5d4037; padding: 15px; border-radius: 10px; font-size: 14px; margin-top: 15px; border: 1px solid #ffe082; line-height: 1.6; }
         .os-notice p { margin: 5px 0; }
 
+        /* [요청 반영] 세려된 하단 푸터 디자인 */
+        .footer { text-align: center; margin-top: 35px; padding-top: 20px; border-top: 1px dashed #e0e0e0; font-size: 14px; color: #888; }
+        .footer a { color: #5c6bc0; text-decoration: none; font-weight: 600; transition: color 0.2s; margin-left: 4px; }
+        .footer a:hover { color: var(--primary-color); text-decoration: underline; }
+
         /* 우측 하단 고정 스캐너 버튼 */
         .scan-btn { position: fixed; bottom: 20px; right: 20px; background-color: #607d8b; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: bold; }
         .scan-btn:hover { opacity: 1; }
@@ -105,6 +110,10 @@
         
         <div id="displayText"></div>
     </div>
+
+    <div class="footer">
+        <p>Created by <a href="https://github.com/tkdgur7234" target="_blank"><i class="fa-brands fa-github"></i> Park Sang-hyeok</a></p>
+    </div>
 </div>
 
 <button class="scan-btn" onclick="checkMyVoices()">🔍 시스템 음성 스캔</button>
@@ -140,7 +149,7 @@
         if (edgeNeural) return edgeNeural;
 
         // 2순위: 맥북 고품질/Premium 저격
-        let macPremium = voices.find(v => v.name.includes('고품질') || v.name.includes('Premium'));
+        let macPremium = voices.find(v => v.name === 'Evan(고품질)' || v.name.includes('고품질') || v.name.includes('Premium'));
         if (macPremium) return macPremium;
 
         // 3순위: 크롬 구글 표준
@@ -269,6 +278,7 @@
         }
     }
 
+    // 속도 수동 변경 반영
     function applySpeed() {
         if (isPlaying || window.speechSynthesis.speaking) {
              playFromIndex(currentWordIdx);
