@@ -94,4 +94,294 @@
         <textarea id="textInput" placeholder="여기에 영어 지문을 붙여넣으세요..."></textarea>
         
         <div class="os-notice">
-            <p><i class="fa-brands fa-windows" style="color: #0078D7; width: 20px;"></i> <b>Windows 사용자:</b> 가장 자연스러운 AI 목소리를 위해 가급
+            <p><i class="fa-brands fa-windows" style="color: #0078D7; width: 20px;"></i> <b>Windows 사용자:</b> 가장 자연스러운 AI 목소리를 위해 가급적 <b>Edge 브라우저</b> 접속을 권장합니다.</p>
+            <p><i class="fa-brands fa-apple" style="color: #555; width: 20px;"></i> <b>MacBook 사용자:</b> 맥북 [시스템 설정] > [손쉬운 사용] > [말하기]에서 <b>영어(고품질/Premium)</b> 음성을 미리 다운로드해주세요.</p>
+        </div>
+        
+        <button class="btn-start" onclick="initPlayer()">▶ 플레이어 로드</button>
+    </div>
+
+    <div id="playerView">
+        <div class="video-player-ui">
+            <div class="top-row">
+                <button class="stop-return-btn" onclick="stopAndReturn()">종료 및 돌아가기</button>
+            </div>
+
+            <div class="main-controls">
+                <button class="control-btn" title="5단어 뒤로" onclick="skipWords(-5)">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button class="control-btn play-pause-btn" id="playPauseBtn" onclick="togglePlayPause()">
+                    <i class="fa-solid fa-circle-play"></i>
+                </button>
+                <button class="control-btn" title="5단어 앞으로" onclick="skipWords(5)">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+            </div>
+
+            <div class="speed-input-wrapper">
+                <label for="speedInput">재생 속도:</label>
+                <input type="number" id="speedInput" value="1.0" step="0.05" min="0.1" max="3.0">
+                <span>x</span>
+                <button class="speed-apply-btn" onclick="applySpeed()">적용</button>
+            </div>
+        </div>
+        
+        <div id="displayText"></div>
+    </div>
+
+    <div class="footer">
+        <p>Created by <a href="https://github.com/tkdgur7234" target="_blank"><i class="fa-brands fa-github"></i> Park Sang-hyeok</a></p>
+    </div>
+</div>
+
+<button class="scan-btn" onclick="openVoiceModal()">🔍 시스템 음성 선택</button>
+
+<div id="voiceModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🎙️ 시스템 음성 직접 선택</h3>
+            <span class="close-btn" onclick="closeVoiceModal()">&times;</span>
+        </div>
+        <div id="voiceList" class="voice-list-container">
+            </div>
+    </div>
+</div>
+
+<script>
+    let fullText = "";
+    let wordsData = []; 
+    let currentWordIdx = 0; 
+    let utterance = null;
+    let isPlaying = false;
+    
+    // [핵심] 사용자가 직접 선택한 목소리 이름을 저장할 변수
+    let userSelectedVoice = null; 
+
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const speedInput = document.getElementById('speedInput');
+    const displayContainer = document.getElementById('displayText');
+    const voiceModal = document.getElementById('voiceModal');
+    const voiceListContainer = document.getElementById('voiceList');
+
+    // [신규] 팝업창 열기 및 목소리 목록 그리기
+    function openVoiceModal() {
+        const voices = window.speechSynthesis.getVoices();
+        const enVoices = voices.filter(v => v.lang.startsWith('en')); 
+        
+        if (enVoices.length === 0) {
+            alert("아직 목소리 목록이 로드되지 않았습니다. 잠시 후 다시 눌러주세요.");
+            return;
+        }
+
+        // 기존 목록 비우기
+        voiceListContainer.innerHTML = '';
+
+        // 버튼(div) 생성해서 넣기
+        enVoices.forEach(v => {
+            const item = document.createElement('div');
+            // 만약 현재 선택된 목소리라면 'selected' 클래스 추가
+            item.className = 'voice-item' + (userSelectedVoice === v.name ? ' selected' : '');
+            item.innerHTML = `<span>${v.name}</span> <span class="lang-tag">${v.lang}</span>`;
+            
+            // 목소리 클릭 시 이벤트
+            item.onclick = () => {
+                userSelectedVoice = v.name; // 유저 선택 저장
+                closeVoiceModal();
+                alert(`✅ [${v.name}] 목소리가 0순위로 강제 고정되었습니다!\n재생 버튼을 누르면 이 목소리로 읽어줍니다.`);
+                
+                // 재생 중이라면 바뀐 목소리로 즉시 다시 읽기 시작
+                if (isPlaying || window.speechSynthesis.speaking) {
+                    playFromIndex(currentWordIdx);
+                }
+            };
+            voiceListContainer.appendChild(item);
+        });
+
+        // 팝업 띄우기
+        voiceModal.style.display = 'flex';
+    }
+
+    // 팝업창 닫기
+    function closeVoiceModal() {
+        voiceModal.style.display = 'none';
+    }
+
+    // [업그레이드] 최적의 목소리 찾는 함수
+    function getBestEnglishVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // [0순위 치트키] 사용자가 팝업에서 직접 선택한 목소리가 있다면 무조건 1빠따로 적용!
+        if (userSelectedVoice) {
+            let custom = voices.find(v => v.name === userSelectedVoice);
+            if (custom) return custom;
+        }
+        
+        // 1순위: 윈도우 Edge Neural
+        let edgeNeural = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
+        if (edgeNeural) return edgeNeural;
+
+        // 2순위: 맥북 고품질/Premium 저격
+        let macPremium = voices.find(v => v.name === 'Evan(고품질)' || v.name.includes('고품질') || v.name.includes('Premium'));
+        if (macPremium) return macPremium;
+
+        // 3순위: 크롬 구글 표준
+        let googleUs = voices.find(v => v.name === 'Google US English');
+        if (googleUs) return googleUs;
+
+        // 4순위: 맥북 기본 백업
+        let macDefault = voices.find(v => v.lang.startsWith('en') && (v.name === 'Alex' || v.name.includes('Samantha')));
+        if (macDefault) return macDefault;
+
+        // 5순위: 윈도우 기본
+        let winDefault = voices.find(v => v.name.includes('Zira') || v.name.includes('David'));
+        if (winDefault) return winDefault;
+
+        // 6순위: 최후의 보루
+        return voices.find(v => v.lang.startsWith('en'));
+    }
+
+    // 모달 바깥 어두운 배경 클릭하면 닫히게 하기
+    window.addEventListener('click', function(e) {
+        if (e.target === voiceModal) {
+            closeVoiceModal();
+        }
+    });
+
+    window.speechSynthesis.getVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+
+    function initPlayer() {
+        fullText = document.getElementById('textInput').value; 
+        if (!fullText.trim()) return alert("지문을 먼저 입력해주세요!");
+        
+        document.getElementById('inputView').style.display = 'none';
+        document.getElementById('playerView').style.display = 'block';
+        
+        const tokens = fullText.split(/([\s]+)/); 
+        let html = '';
+        let charCount = 0;
+        let wordIdx = 0;
+        wordsData = [];
+
+        tokens.forEach(token => {
+            if (/^[\s]+$/.test(token)) {
+                html += token;
+                charCount += token.length;
+            } else if (token.length > 0) {
+                html += `<span class="word" id="word-${wordIdx}" onclick="playFromIndex(${wordIdx})">${token}</span>`;
+                wordsData.push({ idx: wordIdx, start: charCount, length: token.length });
+                wordIdx++;
+                charCount += token.length;
+            }
+        });
+        
+        displayContainer.innerHTML = html;
+        playFromIndex(0); 
+    }
+
+    function playFromIndex(wordIdx) {
+        window.speechSynthesis.cancel(); 
+        
+        if (wordIdx >= wordsData.length) return;
+        currentWordIdx = wordIdx;
+        
+        const startChar = wordsData[wordIdx].start;
+        const textToSpeak = fullText.substring(startChar);
+        
+        utterance = new SpeechSynthesisUtterance(textToSpeak);
+        const targetVoice = getBestEnglishVoice();
+        if (targetVoice) utterance.voice = targetVoice;
+        else utterance.lang = 'en-US';
+        
+        let currentSpeed = parseFloat(speedInput.value);
+        if (isNaN(currentSpeed) || currentSpeed <= 0) currentSpeed = 1.0;
+        utterance.rate = currentSpeed;
+
+        utterance.onboundary = function(e) {
+            if (e.name === 'word') {
+                const absChar = startChar + e.charIndex;
+                const currentWord = wordsData.find(w => absChar >= w.start && absChar < w.start + w.length);
+                
+                if (currentWord) {
+                    currentWordIdx = currentWord.idx;
+                    const oldHighlight = document.querySelector('.highlight');
+                    if (oldHighlight) oldHighlight.classList.remove('highlight');
+                    
+                    const wordSpan = document.getElementById(`word-${currentWord.idx}`);
+                    if (wordSpan) {
+                        wordSpan.classList.add('highlight');
+                        
+                        const wordRect = wordSpan.getBoundingClientRect();
+                        const containerRect = displayContainer.getBoundingClientRect();
+                        
+                        if (wordRect.top < containerRect.top + 30 || wordRect.bottom > containerRect.bottom - 30) {
+                            wordSpan.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }
+                    }
+                }
+            }
+        };
+
+        utterance.onend = function() {
+            isPlaying = false;
+            updatePlayBtnUI();
+        };
+
+        window.speechSynthesis.speak(utterance);
+        isPlaying = true;
+        updatePlayBtnUI();
+    }
+
+    function togglePlayPause() {
+        if (isPlaying) {
+            window.speechSynthesis.pause();
+            isPlaying = false;
+        } else {
+            if(window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+            } else {
+                playFromIndex(currentWordIdx);
+            }
+            isPlaying = true;
+        }
+        updatePlayBtnUI();
+    }
+
+    function updatePlayBtnUI() {
+        if (isPlaying) {
+            playPauseBtn.innerHTML = '<i class="fa-solid fa-circle-pause"></i>';
+        } else {
+            playPauseBtn.innerHTML = '<i class="fa-solid fa-circle-play"></i>';
+        }
+    }
+
+    function applySpeed() {
+        if (isPlaying || window.speechSynthesis.speaking) {
+             playFromIndex(currentWordIdx);
+        }
+    }
+    
+    speedInput.addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            applySpeed();
+        }
+    });
+
+    function skipWords(count) {
+        let newIdx = currentWordIdx + count;
+        if (newIdx < 0) newIdx = 0;
+        if (newIdx >= wordsData.length) newIdx = wordsData.length - 1;
+        playFromIndex(newIdx); 
+    }
+
+    function stopAndReturn() {
+        window.speechSynthesis.cancel();
+        document.getElementById('playerView').style.display = 'none';
+        document.getElementById('inputView').style.display = 'block';
+    }
+</script>
+</body>
+</html>
