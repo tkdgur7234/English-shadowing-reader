@@ -35,7 +35,7 @@
         .main-controls { display: flex; align-items: center; gap: 30px; }
         .control-btn { background: none; border: none; color: white; cursor: pointer; font-size: 24px; transition: color 0.2s, transform 0.1s; }
         .control-btn:hover { color: #bbdefb; }
-        .control-btn:active { transform: scale(0.9); }
+        .control-btn:active { transform: scale(0.9); } /* 쫀득한 클릭 효과 (0.9배로 작아짐) */
         .play-pause-btn { font-size: 50px; color: #fff; }
         
         /* 속도 조절 UI */
@@ -46,7 +46,7 @@
         .speed-apply-btn { background: var(--primary-color); color: white; border: none; border-radius: 5px; padding: 5px 10px; font-size: 12px; cursor: pointer; font-weight: bold; }
         .speed-apply-btn:hover { background: #303f9f; }
 
-        /* 지문 표시 영역 */
+        /* 지문 표시 영역 (여백 원본 유지, 스크롤) */
         #displayText { font-size: 24px; line-height: 2.0; padding: 30px; background: #fff; border-radius: 15px; border: 1px solid #e0e0e0; max-height: 450px; overflow-y: auto; color: #333; white-space: pre-wrap; }
         .word { cursor: pointer; border-radius: 5px; padding: 2px 0; transition: background 0.2s; }
         .word:hover { background-color: #e3f2fd; color: var(--primary-color); }
@@ -62,10 +62,11 @@
     
     <div id="inputView">
         <textarea id="textInput" placeholder="여기에 영어 지문을 붙여넣으세요..."></textarea>
-        <button class="btn-start" style="background-color: #607d8b; margin-bottom: 10px;" onclick="checkMyVoices()">🔍 목소리 목록 스캔하기</button>
         <div class="edge-notice">
-            <i class="fa-brands fa-edge"></i> <b>Edge 브라우저</b>를 가장 자연스러운 목소리를 위해 반드시 사용하셔야합니다!
+            <i class="fa-brands fa-edge"></i> <b>Edge 브라우저</b>를 사용하시면 가장 자연스러운 AI 목소리로 들으실 수 있습니다.
         </div>
+        
+        <button class="btn-start" style="background-color: #607d8b; margin-bottom: 10px;" onclick="checkMyVoices()">🔍 내 맥북 목소리 목록 스캔하기</button>
         <button class="btn-start" onclick="initPlayer()">▶ 플레이어 로드</button>
     </div>
 
@@ -100,6 +101,7 @@
 </div>
 
 <script>
+    // 전역 변수 선언
     let fullText = "";
     let wordsData = []; 
     let currentWordIdx = 0; 
@@ -110,28 +112,28 @@
     const speedInput = document.getElementById('speedInput');
     const displayContainer = document.getElementById('displayText');
 
-    // [신규 추가] 브라우저가 인식하는 실제 목소리 명단 출력기
+    // [신규] 브라우저가 인식하는 실제 목소리 명단 스캐너 함수
     function checkMyVoices() {
         const voices = window.speechSynthesis.getVoices();
-        const enVoices = voices.filter(v => v.lang.startsWith('en')); // 영어 패키지만 추출
+        const enVoices = voices.filter(v => v.lang.startsWith('en')); 
         
         if (enVoices.length === 0) {
-            alert("아직 목소리 목록이 로드되지 않았습니다. 3초 뒤에 다시 눌러주세요.");
+            alert("아직 목소리 목록이 로드되지 않았습니다. 2~3초 뒤에 다시 눌러주세요.");
         } else {
             const names = enVoices.map(v => `- ${v.name} (${v.lang})`).join('\n');
             alert("현재 브라우저가 인식하는 영어 목소리 목록:\n\n" + names);
         }
     }
-    
-    // [업그레이드] 한글/영문 이름 변형까지 모두 잡아내는 투망식 검색
+
+    // [업그레이드] 한글/영문 이름 변형까지 모두 잡아내는 통합 목소리 탐색기
     function getBestEnglishVoice() {
         const voices = window.speechSynthesis.getVoices();
         
-        // 1순위: 윈도우 엣지 Neural (치트키)
+        // 1순위: 윈도우 엣지 Neural
         let edgeNeural = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
         if (edgeNeural) return edgeNeural;
 
-        // 2순위: 고품질/프리미엄 (한글 '에반', '고품질' 및 소문자 premium 모두 포함)
+        // 2순위: 고품질/프리미엄 (한글, 영문 대소문자 모두 대응)
         let premiumVoice = voices.find(v => 
             v.lang.startsWith('en') && 
             (v.name.includes('고품질') || v.name.toLowerCase().includes('premium') || 
@@ -139,7 +141,7 @@
         );
         if (premiumVoice) return premiumVoice;
 
-        // 3순위: Zoe (한글 '조이' 포함)
+        // 3순위: Zoe (조이)
         let zoeVoice = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('zoe') || v.name.includes('조이')));
         if (zoeVoice) return zoeVoice;
 
@@ -156,15 +158,17 @@
         let winDefault = voices.find(v => v.name.includes('Zira') || v.name.includes('David'));
         if (winDefault) return winDefault;
 
-        // 7순위: 아무 영어
+        // 7순위: 아무 영어 발음
         return voices.find(v => v.lang.startsWith('en'));
     }
 
+    // 브라우저 렌더링 시 목소리 목록 사전 로드
     window.speechSynthesis.getVoices();
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
     }
 
+    // 플레이어 초기화
     function initPlayer() {
         fullText = document.getElementById('textInput').value; 
         if (!fullText.trim()) return alert("지문을 먼저 입력해주세요!");
@@ -194,6 +198,7 @@
         playFromIndex(0); 
     }
 
+    // 특정 단어부터 재생
     function playFromIndex(wordIdx) {
         window.speechSynthesis.cancel(); 
         
@@ -226,12 +231,10 @@
                     if (wordSpan) {
                         wordSpan.classList.add('highlight');
                         
-                        // [스크롤 개선] 마우스 휠 방해 금지 로직
-                        // 현재 단어가 화면 영역(위/아래)을 완전히 벗어나려고 할 때만 스크롤을 이동시킵니다.
+                        // 현재 단어가 화면 밖으로 나갈 때만 부드럽게 스크롤
                         const wordRect = wordSpan.getBoundingClientRect();
                         const containerRect = displayContainer.getBoundingClientRect();
                         
-                        // 상단 또는 하단 경계에 가까워졌을 때(30px 여유) 중앙으로 자동 정렬
                         if (wordRect.top < containerRect.top + 30 || wordRect.bottom > containerRect.bottom - 30) {
                             wordSpan.scrollIntoView({ behavior: "smooth", block: "center" });
                         }
@@ -250,6 +253,7 @@
         updatePlayBtnUI();
     }
 
+    // 재생/일시정지 토글
     function togglePlayPause() {
         if (isPlaying) {
             window.speechSynthesis.pause();
@@ -265,6 +269,7 @@
         updatePlayBtnUI();
     }
 
+    // 버튼 UI 업데이트
     function updatePlayBtnUI() {
         if (isPlaying) {
             playPauseBtn.innerHTML = '<i class="fa-solid fa-circle-pause"></i>';
@@ -273,6 +278,7 @@
         }
     }
 
+    // 속도 적용
     function applySpeed() {
         if (isPlaying || window.speechSynthesis.speaking) {
              playFromIndex(currentWordIdx);
@@ -285,6 +291,7 @@
         }
     });
 
+    // 단어 건너뛰기
     function skipWords(count) {
         let newIdx = currentWordIdx + count;
         if (newIdx < 0) newIdx = 0;
@@ -292,6 +299,7 @@
         playFromIndex(newIdx); 
     }
 
+    // 종료
     function stopAndReturn() {
         window.speechSynthesis.cancel();
         document.getElementById('playerView').style.display = 'none';
