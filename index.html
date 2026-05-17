@@ -52,18 +52,37 @@
         .word:hover { background-color: #e3f2fd; color: var(--primary-color); }
         .highlight { background-color: var(--accent-color); font-weight: 800; color: #000; box-shadow: 0 4px 10px rgba(255, 235, 59, 0.5); }
 
-        /* OS별 안내 문구 디자인 */
+        /* OS별 안내 문구 */
         .os-notice { background: #fff8e1; color: #5d4037; padding: 15px; border-radius: 10px; font-size: 14px; margin-top: 15px; border: 1px solid #ffe082; line-height: 1.6; }
         .os-notice p { margin: 5px 0; }
 
-        /* [요청 반영] 세려된 하단 푸터 디자인 */
+        /* 하단 푸터 */
         .footer { text-align: center; margin-top: 35px; padding-top: 20px; border-top: 1px dashed #e0e0e0; font-size: 14px; color: #888; }
         .footer a { color: #5c6bc0; text-decoration: none; font-weight: 600; transition: color 0.2s; margin-left: 4px; }
         .footer a:hover { color: var(--primary-color); text-decoration: underline; }
 
         /* 우측 하단 고정 스캐너 버튼 */
-        .scan-btn { position: fixed; bottom: 20px; right: 20px; background-color: #607d8b; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; opacity: 0.4; transition: opacity 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: bold; }
+        .scan-btn { position: fixed; bottom: 20px; right: 20px; background-color: #607d8b; color: white; border: none; padding: 10px 18px; border-radius: 25px; font-size: 13px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 1000; font-weight: bold; }
         .scan-btn:hover { opacity: 1; }
+
+        /* [신규] 목소리 선택 팝업(모달) 디자인 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 20px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 75vh; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-bottom: 15px; }
+        .modal-header h3 { margin: 0; color: #1a237e; font-size: 18px; }
+        .close-btn { font-size: 24px; cursor: pointer; color: #999; transition: color 0.2s; line-height: 1; }
+        .close-btn:hover { color: #d32f2f; }
+        .voice-list-container { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        /* 스크롤바 디자인 */
+        .voice-list-container::-webkit-scrollbar { width: 6px; }
+        .voice-list-container::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 10px; }
+        
+        /* 팝업 안의 개별 목소리 버튼 디자인 */
+        .voice-item { padding: 12px 15px; border: 1px solid #e0e0e0; border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: #444; }
+        .voice-item:hover { border-color: var(--primary-color); background: #e8eaf6; transform: translateY(-1px); }
+        .voice-item.selected { background: var(--primary-color); color: white; border-color: var(--primary-color); font-weight: bold; }
+        .voice-item .lang-tag { font-size: 11px; background: rgba(0,0,0,0.08); padding: 3px 8px; border-radius: 10px; }
+        .voice-item.selected .lang-tag { background: rgba(255,255,255,0.2); color: white; }
     </style>
 </head>
 <body>
@@ -75,234 +94,4 @@
         <textarea id="textInput" placeholder="여기에 영어 지문을 붙여넣으세요..."></textarea>
         
         <div class="os-notice">
-            <p><i class="fa-brands fa-windows" style="color: #0078D7; width: 20px;"></i> <b>Windows 사용자:</b> 가장 자연스러운 AI 목소리를 위해 가급적 <b>Edge 브라우저</b> 접속을 권장합니다.</p>
-            <p><i class="fa-brands fa-apple" style="color: #555; width: 20px;"></i> <b>MacBook 사용자:</b> 맥북 [시스템 설정] > [손쉬운 사용] > [말하기]에서 <b>영어(고품질/Premium)</b> 음성을 미리 다운로드해주세요.</p>
-        </div>
-        
-        <button class="btn-start" onclick="initPlayer()">▶ 플레이어 로드</button>
-    </div>
-
-    <div id="playerView">
-        <div class="video-player-ui">
-            <div class="top-row">
-                <button class="stop-return-btn" onclick="stopAndReturn()">종료 및 돌아가기</button>
-            </div>
-
-            <div class="main-controls">
-                <button class="control-btn" title="5단어 뒤로" onclick="skipWords(-5)">
-                    <i class="fa-solid fa-backward-step"></i>
-                </button>
-                <button class="control-btn play-pause-btn" id="playPauseBtn" onclick="togglePlayPause()">
-                    <i class="fa-solid fa-circle-play"></i>
-                </button>
-                <button class="control-btn" title="5단어 앞으로" onclick="skipWords(5)">
-                    <i class="fa-solid fa-forward-step"></i>
-                </button>
-            </div>
-
-            <div class="speed-input-wrapper">
-                <label for="speedInput">재생 속도:</label>
-                <input type="number" id="speedInput" value="1.0" step="0.05" min="0.1" max="3.0">
-                <span>x</span>
-                <button class="speed-apply-btn" onclick="applySpeed()">적용</button>
-            </div>
-        </div>
-        
-        <div id="displayText"></div>
-    </div>
-
-    <div class="footer">
-        <p>Created by <a href="https://github.com/tkdgur7234" target="_blank"><i class="fa-brands fa-github"></i> Park Sang-hyeok</a></p>
-    </div>
-</div>
-
-<button class="scan-btn" onclick="checkMyVoices()">🔍 시스템 음성 스캔</button>
-
-<script>
-    let fullText = "";
-    let wordsData = []; 
-    let currentWordIdx = 0; 
-    let utterance = null;
-    let isPlaying = false;
-
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    const speedInput = document.getElementById('speedInput');
-    const displayContainer = document.getElementById('displayText');
-
-    function checkMyVoices() {
-        const voices = window.speechSynthesis.getVoices();
-        const enVoices = voices.filter(v => v.lang.startsWith('en')); 
-        
-        if (enVoices.length === 0) {
-            alert("아직 목소리 목록이 로드되지 않았습니다. 잠시 후 다시 눌러주세요.");
-        } else {
-            const names = enVoices.map(v => `- ${v.name} (${v.lang})`).join('\n');
-            alert("현재 브라우저가 인식하는 영어 목소리 목록:\n\n" + names);
-        }
-    }
-
-    function getBestEnglishVoice() {
-        const voices = window.speechSynthesis.getVoices();
-        
-        // 1순위: 윈도우 Edge Neural
-        let edgeNeural = voices.find(v => v.lang === 'en-US' && v.name.includes('Neural'));
-        if (edgeNeural) return edgeNeural;
-
-        // 2순위: 맥북 고품질/Premium 저격
-        let macPremium = voices.find(v => v.name === 'Evan(고품질)' || v.name.includes('고품질') || v.name.includes('Premium'));
-        if (macPremium) return macPremium;
-
-        // 3순위: 크롬 구글 표준
-        let googleUs = voices.find(v => v.name === 'Google US English');
-        if (googleUs) return googleUs;
-
-        // 4순위: 맥북 기본 백업 (Alex, Samantha)
-        let macDefault = voices.find(v => v.lang.startsWith('en') && (v.name === 'Alex' || v.name.includes('Samantha')));
-        if (macDefault) return macDefault;
-
-        // 5순위: 윈도우 기본 (Zira, David)
-        let winDefault = voices.find(v => v.name.includes('Zira') || v.name.includes('David'));
-        if (winDefault) return winDefault;
-
-        // 6순위: 최후의 보루
-        return voices.find(v => v.lang.startsWith('en'));
-    }
-
-    window.speechSynthesis.getVoices();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-    }
-
-    function initPlayer() {
-        fullText = document.getElementById('textInput').value; 
-        if (!fullText.trim()) return alert("지문을 먼저 입력해주세요!");
-        
-        document.getElementById('inputView').style.display = 'none';
-        document.getElementById('playerView').style.display = 'block';
-        
-        const tokens = fullText.split(/([\s]+)/); 
-        let html = '';
-        let charCount = 0;
-        let wordIdx = 0;
-        wordsData = [];
-
-        tokens.forEach(token => {
-            if (/^[\s]+$/.test(token)) {
-                html += token;
-                charCount += token.length;
-            } else if (token.length > 0) {
-                html += `<span class="word" id="word-${wordIdx}" onclick="playFromIndex(${wordIdx})">${token}</span>`;
-                wordsData.push({ idx: wordIdx, start: charCount, length: token.length });
-                wordIdx++;
-                charCount += token.length;
-            }
-        });
-        
-        displayContainer.innerHTML = html;
-        playFromIndex(0); 
-    }
-
-    function playFromIndex(wordIdx) {
-        window.speechSynthesis.cancel(); 
-        
-        if (wordIdx >= wordsData.length) return;
-        currentWordIdx = wordIdx;
-        
-        const startChar = wordsData[wordIdx].start;
-        const textToSpeak = fullText.substring(startChar);
-        
-        utterance = new SpeechSynthesisUtterance(textToSpeak);
-        const targetVoice = getBestEnglishVoice();
-        if (targetVoice) utterance.voice = targetVoice;
-        else utterance.lang = 'en-US';
-        
-        let currentSpeed = parseFloat(speedInput.value);
-        if (isNaN(currentSpeed) || currentSpeed <= 0) currentSpeed = 1.0;
-        utterance.rate = currentSpeed;
-
-        utterance.onboundary = function(e) {
-            if (e.name === 'word') {
-                const absChar = startChar + e.charIndex;
-                const currentWord = wordsData.find(w => absChar >= w.start && absChar < w.start + w.length);
-                
-                if (currentWord) {
-                    currentWordIdx = currentWord.idx;
-                    const oldHighlight = document.querySelector('.highlight');
-                    if (oldHighlight) oldHighlight.classList.remove('highlight');
-                    
-                    const wordSpan = document.getElementById(`word-${currentWord.idx}`);
-                    if (wordSpan) {
-                        wordSpan.classList.add('highlight');
-                        
-                        const wordRect = wordSpan.getBoundingClientRect();
-                        const containerRect = displayContainer.getBoundingClientRect();
-                        
-                        if (wordRect.top < containerRect.top + 30 || wordRect.bottom > containerRect.bottom - 30) {
-                            wordSpan.scrollIntoView({ behavior: "smooth", block: "center" });
-                        }
-                    }
-                }
-            }
-        };
-
-        utterance.onend = function() {
-            isPlaying = false;
-            updatePlayBtnUI();
-        };
-
-        window.speechSynthesis.speak(utterance);
-        isPlaying = true;
-        updatePlayBtnUI();
-    }
-
-    function togglePlayPause() {
-        if (isPlaying) {
-            window.speechSynthesis.pause();
-            isPlaying = false;
-        } else {
-            if(window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-            } else {
-                playFromIndex(currentWordIdx);
-            }
-            isPlaying = true;
-        }
-        updatePlayBtnUI();
-    }
-
-    function updatePlayBtnUI() {
-        if (isPlaying) {
-            playPauseBtn.innerHTML = '<i class="fa-solid fa-circle-pause"></i>';
-        } else {
-            playPauseBtn.innerHTML = '<i class="fa-solid fa-circle-play"></i>';
-        }
-    }
-
-    // 속도 수동 변경 반영
-    function applySpeed() {
-        if (isPlaying || window.speechSynthesis.speaking) {
-             playFromIndex(currentWordIdx);
-        }
-    }
-    
-    speedInput.addEventListener("keyup", function(event) {
-        if (event.key === "Enter") {
-            applySpeed();
-        }
-    });
-
-    function skipWords(count) {
-        let newIdx = currentWordIdx + count;
-        if (newIdx < 0) newIdx = 0;
-        if (newIdx >= wordsData.length) newIdx = wordsData.length - 1;
-        playFromIndex(newIdx); 
-    }
-
-    function stopAndReturn() {
-        window.speechSynthesis.cancel();
-        document.getElementById('playerView').style.display = 'none';
-        document.getElementById('inputView').style.display = 'block';
-    }
-</script>
-</body>
-</html>
+            <p><i class="fa-brands fa-windows" style="color: #0078D7; width: 20px;"></i> <b>Windows 사용자:</b> 가장 자연스러운 AI 목소리를 위해 가급
