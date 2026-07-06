@@ -178,7 +178,7 @@
 
     function openVoiceModal() {
         const voices = window.speechSynthesis.getVoices();
-        let enVoices = voices.filter(v => v.lang.startsWith('en')); 
+        let enVoices = voices.filter(v => v.lang && v.lang.startsWith('en'));
         
         if (enVoices.length === 0) {
             alert("아직 목소리 목록이 로드되지 않았습니다. 잠시 후 다시 눌러주세요.");
@@ -343,9 +343,11 @@
         };
 
         utterance = newUtterance;
+        setTimeout(() => {
         window.speechSynthesis.speak(utterance);
         isPlaying = true;
         updatePlayBtnUI();
+        }, 50);
     }
 
     function togglePlayPause() {
